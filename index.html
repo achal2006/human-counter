@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Entry Counter</title>
+<style>
+:root{--bg:#070b14;--card:#0f1626;--line:#1d2940;--tx:#e6edf7;--mute:#7d8ba6;--in:#34f5a0;--out:#ff5d7a;--acc:#22d3ee}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+header{display:flex;align-items:center;justify-content:space-between;padding:14px 20px;border-bottom:1px solid var(--line);gap:10px;flex-wrap:wrap}
+.brand{font-weight:700;letter-spacing:.08em;font-size:14px}.brand span{color:var(--acc)}
+.pill{font-size:12px;color:var(--mute);display:flex;align-items:center;gap:8px}
+.dot{width:9px;height:9px;border-radius:50%;background:var(--mute)}
+.dot.live{background:var(--in);box-shadow:0 0 10px var(--in);animation:p 1.2s infinite}
+.dot.err{background:var(--out)}
+@keyframes p{50%{opacity:.3}}
+.bar{display:flex;gap:10px;padding:14px 20px 0;max-width:1300px;margin:auto;flex-wrap:wrap}
+.btn{background:#0b1220;color:var(--tx);border:1px solid var(--line);border-radius:10px;padding:10px 14px;font-size:13px;cursor:pointer}
+.btn:hover{border-color:var(--acc)}.btn.pri{background:linear-gradient(90deg,#0891b2,#2563eb);border:0;font-weight:600}
+.link{display:flex;flex:1;min-width:260px;gap:8px}
+.link input{flex:1;background:#0b1220;border:1px solid var(--line);color:var(--tx);border-radius:10px;padding:10px 12px;font-size:13px;min-width:0}
+main{display:grid;grid-template-columns:minmax(0,2fr) minmax(280px,1fr);gap:16px;padding:16px 20px;max-width:1300px;margin:auto}
+@media(max-width:850px){main{grid-template-columns:1fr}}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px}
+.vid{position:relative;padding:0;overflow:hidden;background:#000}
+#v{display:block;width:100%;height:auto;cursor:default}
+.vid.draw #v{cursor:crosshair}
+.hint{position:absolute;top:10px;left:50%;transform:translateX(-50%);background:#000b;color:var(--acc);padding:6px 12px;border-radius:8px;font-size:12px;display:none}
+.vid.draw .hint{display:block}
+.mk{position:absolute;width:12px;height:12px;border-radius:50%;background:var(--acc);transform:translate(-50%,-50%);box-shadow:0 0 10px var(--acc)}
+.tools{display:flex;gap:8px;padding:10px 14px;border-top:1px solid var(--line);flex-wrap:wrap}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.stat{padding:14px;border-radius:12px;background:#0b1220;border:1px solid var(--line)}
+.stat.wide{grid-column:span 2}
+.lbl{font-size:11px;letter-spacing:.12em;color:var(--mute)}
+.num{font-size:44px;font-weight:800;line-height:1.1;margin-top:4px;font-variant-numeric:tabular-nums}
+.in .num{color:var(--in);text-shadow:0 0 18px #34f5a066}.out .num{color:var(--out);text-shadow:0 0 18px #ff5d7a66}.wide .num{color:var(--acc)}
+.side{display:flex;flex-direction:column;gap:16px}
+h3{margin:0 0 10px;font-size:12px;letter-spacing:.12em;color:var(--mute);font-weight:600}
+.bars{display:flex;align-items:flex-end;gap:8px;height:90px}
+.col{flex:1;display:flex;align-items:flex-end;gap:2px;height:100%}
+.col i{flex:1;border-radius:3px 3px 0 0;min-height:3px;transition:height .4s}
+.col i.a{background:var(--in)}.col i.b{background:var(--out)}
+.hrs{display:flex;gap:8px;font-size:10px;color:var(--mute);margin-top:4px}.hrs span{flex:1;text-align:center}
+#log{list-style:none;margin:0;padding:0;font:12px ui-monospace,monospace;min-height:60px}
+#log li{display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--line)}
+.bd{padding:1px 8px;border-radius:999px;font-weight:700}.bd.i{background:#34f5a022;color:var(--in)}.bd.o{background:#ff5d7a22;color:var(--out)}
+#msg{font-size:12px;color:var(--mute);padding:6px 20px 0;max-width:1300px;margin:auto;min-height:20px}
+</style>
+</head>
+<body>
+<header>
+  <div class="brand">ENTRY<span>.</span>COUNT</div>
+  <div class="pill"><i class="dot" id="dot"></i><span id="status">idle</span> · <span id="src">No source</span> · <span id="fps">0</span> FPS</div>
+</header>
+
+<div class="bar">
+  <input type="file" id="file" accept="video/*" hidden>
+  <button class="btn pri" onclick="file.click()">⬆ Upload video</button>
+  <div class="link">
+    <input id="url" placeholder="Camera link  (rtsp://user:pass@ip:554/stream  or  http://ip/video.mjpg)">
+    <button class="btn" id="go">Connect</button>
+  </div>
+</div>
+<div id="msg"></div>
+
+<main>
+  <section class="card vid" id="box" style="padding:0">
+    <div style="position:relative" id="wrap">
+      <img id="v" src="/video" alt="live video">
+      <div class="hint" id="hint">Click 2 points to place the counting line</div>
+    </div>
+    <div class="tools">
+      <button class="btn" id="draw">✏ Set line</button>
+      <button class="btn" id="flip">⇅ Flip IN / OUT</button>
+      <button class="btn" id="reset">⟲ Reset counts</button>
+    </div>
+  </section>
+
+  <aside class="side">
+    <div class="stats">
+      <div class="stat in"><div class="lbl">ENTERED</div><div class="num" id="nin">0</div></div>
+      <div class="stat out"><div class="lbl">EXITED</div><div class="num" id="nout">0</div></div>
+      <div class="stat wide"><div class="lbl">CURRENTLY INSIDE · <span id="act">0</span> tracked now</div><div class="num" id="ins">0</div></div>
+    </div>
+    <div class="card"><h3>LAST 8 HOURS · <span style="color:var(--in)">IN</span> / <span style="color:var(--out)">OUT</span></h3><div class="bars" id="bars"></div><div class="hrs" id="hrs"></div></div>
+    <div class="card"><h3>EVENT LOG</h3><ul id="log"></ul></div>
+  </aside>
+</main>
+
+<script>
+const $=id=>document.getElementById(id);
+const post=(u,b)=>fetch(u,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b||{})}).then(r=>r.json());
+const msg=t=>$('msg').textContent=t||'';
+
+$('file').onchange=async e=>{
+  const f=e.target.files[0]; if(!f) return;
+  msg('Uploading '+f.name+' ...');
+  const fd=new FormData(); fd.append('file',f);
+  try{ await fetch('/upload',{method:'POST',body:fd}); msg('Playing '+f.name); }
+  catch(err){ msg('Upload failed'); }
+  e.target.value='';
+};
+$('go').onclick=async()=>{
+  const u=$('url').value.trim(); if(!u) return;
+  msg('Connecting...');
+  const r=await post('/source',{url:u});
+  msg(r.ok?'Connecting to camera... (can take a few seconds)':r.error);
+};
+$('flip').onclick=()=>post('/flip');
+$('reset').onclick=()=>post('/reset');
+
+// click-to-draw counting line
+let drawing=false,pts=[];
+$('draw').onclick=()=>{drawing=true;pts=[];document.querySelectorAll('.mk').forEach(m=>m.remove());$('box').classList.add('draw')};
+$('v').onclick=e=>{
+  if(!drawing) return;
+  const r=$('v').getBoundingClientRect();
+  const fx=(e.clientX-r.left)/r.width, fy=(e.clientY-r.top)/r.height;
+  pts.push([fx,fy]);
+  const m=document.createElement('div'); m.className='mk';
+  m.style.left=(fx*100)+'%'; m.style.top=(fy*100)+'%'; $('wrap').appendChild(m);
+  if(pts.length==2){
+    post('/line',{x1:pts[0][0],y1:pts[0][1],x2:pts[1][0],y2:pts[1][1]});
+    drawing=false; $('box').classList.remove('draw');
+    setTimeout(()=>document.querySelectorAll('.mk').forEach(m=>m.remove()),600);
+  }
+};
+
+async function tick(){
+  try{
+    const s=await (await fetch('/stats')).json();
+    $('nin').textContent=s.in; $('nout').textContent=s.out; $('ins').textContent=s.inside; $('act').textContent=s.active;
+    $('status').textContent=s.status; $('src').textContent=s.source; $('fps').textContent=s.fps;
+    $('dot').className='dot '+(s.status=='live'||s.status=='playing'?'live':s.status.startsWith('error')?'err':'');
+    $('log').innerHTML=s.events.length?s.events.map(e=>`<li><span>${e.t} · ID ${e.id}</span><span class="bd ${e.dir=='IN'?'i':'o'}">${e.dir}</span></li>`).join(''):'<li style="color:var(--mute)">No crossings yet</li>';
+    const mx=Math.max(1,...s.hourly.map(h=>Math.max(h[1],h[2])));
+    $('bars').innerHTML=s.hourly.map(h=>`<div class="col"><i class="a" style="height:${h[1]/mx*100}%"></i><i class="b" style="height:${h[2]/mx*100}%"></i></div>`).join('');
+    $('hrs').innerHTML=s.hourly.map(h=>`<span>${h[0].slice(0,2)}</span>`).join('');
+  }catch(e){}
+}
+setInterval(tick,500); tick();
+</script>
+</body>
+</html>
